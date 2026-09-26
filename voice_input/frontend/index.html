@@ -1,0 +1,314 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    :root { color-scheme: dark; font-family: "Segoe UI", "Malgun Gothic", sans-serif; }
+    * { box-sizing: border-box; }
+    body { margin: 0; color: #e9f8fa; background: transparent; }
+    .console {
+      min-height: 400px; padding: 18px 24px 22px; overflow: hidden; position: relative;
+      border: 1px solid rgba(114, 226, 233, .32); border-radius: 10px;
+      background: linear-gradient(135deg, rgba(4, 17, 24, .91), rgba(8, 29, 34, .74));
+      box-shadow: 0 18px 55px rgba(0, 0, 0, .38), inset 0 0 38px rgba(44, 204, 213, .06);
+      backdrop-filter: blur(14px);
+    }
+    .console::before {
+      content: ""; position: absolute; inset: 0; pointer-events: none; opacity: .17;
+      background: repeating-linear-gradient(0deg, transparent 0 3px, rgba(142, 245, 245, .12) 4px);
+    }
+    .topline, .hero, .controls { position: relative; z-index: 1; }
+    .topline { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; }
+    .brand { color: #77e5e8; font-size: 12px; font-weight: 700; letter-spacing: 3px; }
+    .system-state { margin-top: 7px; color: #9bb7bb; font-size: 11px; letter-spacing: 1.4px; }
+    .metrics { display: flex; gap: 28px; text-align: right; }
+    .metric-label { display: block; color: #81a5aa; font-size: 10px; letter-spacing: 1.6px; text-transform: uppercase; }
+    .metric-value { display: block; margin-top: 5px; color: #eafafa; font-size: 16px; font-variant-numeric: tabular-nums; }
+    #clock { font-size: 22px; letter-spacing: 1px; }
+    .hero { min-height: 270px; display: flex; flex-direction: column; align-items: center; justify-content: center; padding-top: 12px; }
+    .reactor { width: 186px; height: 186px; position: relative; display: grid; place-items: center; }
+    .orbit, .orbit::before, .orbit::after { position: absolute; border: 1px solid rgba(90, 229, 235, .52); border-radius: 50%; }
+    .orbit { inset: 9px; transform: rotateX(67deg) rotateZ(-17deg); animation: orbit 12s linear infinite; }
+    .orbit::before { content: ""; inset: 13px; transform: rotate(48deg); }
+    .orbit::after { content: ""; inset: -8px 27px; border-color: rgba(211, 255, 247, .35); transform: rotate(88deg); }
+    .reactor-core {
+      width: 86px; height: 86px; border: 1px solid rgba(214, 255, 255, .95); border-radius: 50%;
+      background: radial-gradient(circle at 34% 28%, #f2ffff 0, #8df8e9 12%, #28bdbd 39%, #0d5968 68%, #06141d 100%);
+      box-shadow: 0 0 20px #48d8d3, 0 0 58px rgba(54, 221, 218, .45), inset -12px -12px 24px rgba(0, 0, 0, .64);
+      animation: pulse 3.1s ease-in-out infinite;
+    }
+    .hero-title { margin-top: 8px; font-size: 12px; font-weight: 700; letter-spacing: 5px; color: #9bf5ed; }
+    #status { min-height: 20px; margin-top: 8px; color: #bdd6d7; font-size: 13px; text-align: center; }
+    .controls { display: flex; justify-content: center; min-height: 44px; }
+    button {
+      min-width: 188px; min-height: 42px; padding: 0 22px; border: 1px solid #69e1dd; border-radius: 4px;
+      color: #eaffff; background: rgba(18, 107, 111, .56); cursor: pointer; font-size: 12px;
+      font-weight: 700; letter-spacing: 2px; transition: background .2s, box-shadow .2s, transform .2s;
+    }
+    button:hover { background: rgba(29, 157, 157, .7); box-shadow: 0 0 20px rgba(75, 231, 225, .24); transform: translateY(-1px); }
+    button:disabled { opacity: .55; cursor: wait; }
+    button.stop { border-color: rgba(241, 139, 121, .7); background: rgba(106, 42, 43, .62); }
+    .active .reactor-core { box-shadow: 0 0 24px #48d8d3, 0 0 70px rgba(54, 221, 218, .68), inset -12px -12px 24px rgba(0, 0, 0, .64); }
+    .active #status { color: #8ef1df; }
+    @keyframes orbit { to { transform: rotateX(67deg) rotateZ(343deg); } }
+    @keyframes pulse { 0%, 100% { transform: scale(.96); } 50% { transform: scale(1.06); } }
+    @media (max-width: 540px) {
+      .console { min-height: 370px; padding: 15px 14px 18px; }
+      .topline { display: block; }
+      .metrics { justify-content: flex-start; gap: 26px; margin-top: 14px; text-align: left; }
+      .metric-value { font-size: 13px; white-space: nowrap; }
+      #clock { font-size: 19px; }
+      .hero { min-height: 245px; }
+      .reactor { transform: scale(.88); }
+      .brand { letter-spacing: 2px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="console" id="console">
+    <header class="topline">
+      <div>
+        <div class="brand">J.A.R.V.I.S. / PERSONAL SYSTEM</div>
+        <div class="system-state" id="systemState">STANDBY</div>
+      </div>
+      <div class="metrics">
+        <div><span class="metric-label">Local time</span><span class="metric-value" id="clock">--:--:--</span></div>
+        <div><span class="metric-label">Weather</span><span class="metric-value" id="weather">위치 확인 중</span></div>
+      </div>
+    </header>
+    <section class="hero">
+      <div class="reactor" aria-hidden="true">
+        <div class="orbit"></div><div class="reactor-core"></div>
+      </div>
+      <div class="hero-title">J A R V I S</div>
+      <div id="status" aria-live="polite">시스템을 시작할 준비가 되었습니다.</div>
+    </section>
+    <footer class="controls"><button id="startButton" type="button">시스템 시작</button></footer>
+  </main>
+  <script>
+    const consolePanel = document.getElementById("console");
+    const button = document.getElementById("startButton");
+    const status = document.getElementById("status");
+    const systemState = document.getElementById("systemState");
+    const clock = document.getElementById("clock");
+    const weather = document.getElementById("weather");
+    const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    let recognition = null;
+    let language = "ko-KR";
+    let active = false;
+    let listening = false;
+    let phase = "off";
+    let blocked = false;
+    let pendingActive = null;
+    let eventSequence = 0;
+    let lastToggleAt = 0;
+    let lastSpeechId = -1;
+
+    function sendValue(type, text = "") {
+      eventSequence += 1;
+      window.parent.postMessage({
+        isStreamlitMessage: true,
+        type: "streamlit:setComponentValue",
+        value: { type, text, id: `${Date.now()}-${eventSequence}` }
+      }, "*");
+    }
+
+    function updateClock() {
+      const now = new Date();
+      clock.textContent = new Intl.DateTimeFormat("ko-KR", {
+        hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false
+      }).format(now);
+    }
+    updateClock();
+    setInterval(updateClock, 1000);
+
+    const weatherLabels = {
+      0: "맑음", 1: "대체로 맑음", 2: "구름 조금", 3: "흐림", 45: "안개", 48: "짙은 안개",
+      51: "이슬비", 53: "이슬비", 55: "강한 이슬비", 61: "비", 63: "비", 65: "강한 비",
+      71: "눈", 73: "눈", 75: "강한 눈", 80: "소나기", 81: "소나기", 82: "강한 소나기",
+      95: "뇌우", 96: "우박 동반 뇌우", 99: "강한 뇌우"
+    };
+    async function loadWeather(latitude, longitude, place) {
+      const url = new URL("https://api.open-meteo.com/v1/forecast");
+      url.search = new URLSearchParams({
+        latitude, longitude, current: "temperature_2m,weather_code", timezone: "auto"
+      });
+      try {
+        const response = await fetch(url);
+        if (!response.ok) throw new Error("weather request failed");
+        const data = await response.json();
+        const current = data.current;
+        weather.textContent = `${place} ${Math.round(current.temperature_2m)}° · ${weatherLabels[current.weather_code] || "날씨"}`;
+      } catch (_) {
+        weather.textContent = "날씨 정보 없음";
+      }
+    }
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        ({ coords }) => loadWeather(coords.latitude, coords.longitude, "현재 위치"),
+        () => loadWeather(37.5665, 126.9780, "서울"),
+        { timeout: 5000, maximumAge: 600000 }
+      );
+    } else {
+      loadWeather(37.5665, 126.9780, "서울");
+    }
+
+    function setPhase(nextPhase, message) {
+      phase = nextPhase;
+      status.textContent = message;
+      const labels = {
+        off: "STANDBY", wake: "WAKE WORD LISTENING", greeting: "CONNECTED",
+        command: "VOICE INPUT", processing: "PROCESSING", speaking: "JARVIS SPEAKING"
+      };
+      systemState.textContent = labels[nextPhase] || "STANDBY";
+    }
+
+    function beginListening(nextPhase, message) {
+      if (!recognition || !active || blocked || listening) return;
+      setPhase(nextPhase, message);
+      try { recognition.start(); }
+      catch (_) { window.setTimeout(() => {
+        if (active && !listening && !blocked && phase === nextPhase) beginListening(nextPhase, message);
+      }, 350); }
+    }
+
+    function koreanVoice() {
+      const voices = window.speechSynthesis.getVoices();
+      const korean = voices.filter((voice) => voice.lang.toLowerCase().startsWith("ko"));
+      return korean.find((voice) => /sunhi|heami|yuna|female|여성/i.test(voice.name)) || korean[0] || null;
+    }
+
+    function speak(text, onDone) {
+      if (!text || !window.speechSynthesis) { if (onDone) onDone(); return; }
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = language;
+      utterance.rate = 1.12;
+      utterance.pitch = 1.04;
+      const voice = koreanVoice();
+      if (voice) utterance.voice = voice;
+      utterance.onend = () => { if (onDone) onDone(); };
+      utterance.onerror = () => { if (onDone) onDone(); };
+      window.speechSynthesis.speak(utterance);
+    }
+
+    if (Recognition) {
+      recognition = new Recognition();
+      recognition.continuous = false;
+      recognition.interimResults = true;
+      recognition.lang = language;
+      recognition.onstart = () => { listening = true; };
+      recognition.onresult = (event) => {
+        let finalText = "";
+        let interimText = "";
+        for (let index = event.resultIndex; index < event.results.length; index += 1) {
+          const result = event.results[index];
+          if (result.isFinal) finalText += result[0].transcript;
+          else interimText += result[0].transcript;
+        }
+        if (interimText) status.textContent = interimText;
+        if (!finalText.trim()) return;
+        if (phase === "wake" && /자비스|자비쓰|자비즈/i.test(finalText)) {
+          setPhase("greeting", "호출을 확인했습니다.");
+          recognition.stop();
+          sendValue("wake", finalText.trim());
+          speak("무엇을 도와드릴까요?", () => beginListening("command", "말씀해 주세요."));
+        } else if (phase === "command") {
+          setPhase("processing", "요청을 전달하고 있습니다.");
+          recognition.stop();
+          sendValue("command", finalText.trim());
+        } else if (phase === "wake") {
+          status.textContent = "호출어 '자비스'를 기다리고 있습니다.";
+        }
+      };
+      recognition.onerror = (event) => {
+        const messages = {
+          "not-allowed": "마이크 권한을 허용한 뒤 다시 시작해 주세요.",
+          "service-not-allowed": "이 브라우저에서 음성 인식을 사용할 수 없습니다.",
+          "audio-capture": "사용 가능한 마이크를 찾을 수 없습니다.",
+          "no-speech": "호출어를 기다리고 있습니다."
+        };
+        status.textContent = messages[event.error] || `음성 인식 오류: ${event.error}`;
+        if (event.error === "not-allowed" || event.error === "service-not-allowed") blocked = true;
+      };
+      recognition.onend = () => {
+        listening = false;
+        if (active && !blocked && phase === "wake") {
+          window.setTimeout(() => beginListening("wake", "호출어 '자비스'를 기다리고 있습니다."), 250);
+        }
+      };
+    } else {
+      button.disabled = true;
+      status.textContent = "음성 인식은 Chrome 또는 Edge에서 사용할 수 있습니다.";
+    }
+
+    button.addEventListener("click", () => {
+      const now = Date.now();
+      if (now - lastToggleAt < 500) return;
+      lastToggleAt = now;
+      if (active) {
+        pendingActive = false;
+        active = false;
+        blocked = false;
+        setPhase("off", "시스템이 대기 상태로 전환되었습니다.");
+        consolePanel.classList.remove("active");
+        button.classList.remove("stop");
+        button.textContent = "시스템 시작";
+        if (recognition && listening) recognition.stop();
+        window.speechSynthesis?.cancel();
+        sendValue("stop");
+        return;
+      }
+      if (!recognition) return;
+      pendingActive = true;
+      active = true;
+      blocked = false;
+      consolePanel.classList.add("active");
+      button.classList.add("stop");
+      button.textContent = "시스템 종료";
+      sendValue("start");
+      beginListening("wake", "호출어 '자비스'를 기다리고 있습니다.");
+    });
+
+    function setFrameHeight() {
+      window.parent.postMessage({
+        isStreamlitMessage: true, type: "streamlit:setFrameHeight", height: 420
+      }, "*");
+    }
+
+    window.addEventListener("message", (event) => {
+      if (!event.data || event.data.type !== "streamlit:render") return;
+      const args = event.data.args || {};
+      language = args.language || "ko-KR";
+      if (recognition) recognition.lang = language;
+      if (pendingActive !== null) {
+        if (args.active === pendingActive) pendingActive = null;
+      } else if (args.active !== active) {
+        active = args.active;
+        if (active) {
+          consolePanel.classList.add("active");
+          button.classList.add("stop");
+          button.textContent = "시스템 종료";
+          beginListening("wake", "호출어 '자비스'를 기다리고 있습니다.");
+        } else {
+          if (recognition && listening) recognition.stop();
+          setPhase("off", "시스템을 시작할 준비가 되었습니다.");
+          consolePanel.classList.remove("active");
+          button.classList.remove("stop");
+          button.textContent = "시스템 시작";
+        }
+      }
+      if (args.speech_id !== undefined && args.speech_id !== lastSpeechId && args.speech_text) {
+        lastSpeechId = args.speech_id;
+        setPhase("speaking", "응답을 음성으로 전달하고 있습니다.");
+        speak(args.speech_text, () => beginListening("wake", "호출어 '자비스'를 기다리고 있습니다."));
+      }
+      setFrameHeight();
+    });
+
+    window.parent.postMessage({ isStreamlitMessage: true, type: "streamlit:componentReady", apiVersion: 1 }, "*");
+    setTimeout(setFrameHeight, 100);
+  </script>
+</body>
+</html>
