@@ -1,7 +1,6 @@
 import os
 import requests
 import streamlit as st
-from streamlit.errors import StreamlitSecretNotFoundError
 from voice_input import voice_input
 
 # =========================================================
@@ -13,7 +12,7 @@ def get_setting(name: str, default: str) -> str:
         return value
     try:
         return str(st.secrets.get(name, default))
-    except StreamlitSecretNotFoundError:
+    except Exception:
         return default
 
 
